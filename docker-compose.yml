@@ -1,0 +1,9 @@
+postgres: &POSTGRES
+  image: postgres
+
+postgres-dev:
+  <<: *POSTGRES
+  ports:
+    - 5432:5432
+  volumes:
+    - ./db/dev/database.sql:/docker-entrypoint-initdb.d/1-dev-database.sql
