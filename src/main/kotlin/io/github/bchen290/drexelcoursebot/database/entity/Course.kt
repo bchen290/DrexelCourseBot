@@ -8,7 +8,7 @@ import org.jetbrains.exposed.dao.id.EntityID
 class Course(id: EntityID<Int>) : IntEntity(id) {
     companion object : IntEntityClass<Course>(Courses)
 
-    val subject by Subject referencedOn Courses.subject
+    var subject by Subject referencedOn Courses.subject
 
     var title by Courses.title
     var description by Courses.descriptions
