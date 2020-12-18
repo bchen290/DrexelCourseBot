@@ -1,8 +1,8 @@
 package io.github.bchen290.drexelcoursebot
 
-import CourseCog
 import discord4j.core.DiscordClientBuilder
 import discord4j.core.event.domain.lifecycle.ReadyEvent
+import io.github.bchen290.drexelcoursebot.database.DatabaseHelper
 import org.springframework.boot.CommandLineRunner
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
@@ -28,6 +28,7 @@ class DrexelcoursebotApplication {
                     }
 
             CourseCog(client)
+            DatabaseHelper
 
             client.onDisconnect().block()
         }

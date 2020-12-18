@@ -1,3 +1,5 @@
+package io.github.bchen290.drexelcoursebot
+
 import discord4j.core.GatewayDiscordClient
 import discord4j.core.event.domain.message.MessageCreateEvent
 import reactor.core.publisher.Mono
