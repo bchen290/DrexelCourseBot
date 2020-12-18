@@ -1,5 +1,7 @@
 package io.github.bchen290.drexelcoursebot.database
 
+import io.github.bchen290.drexelcoursebot.database.table.Courses
+import io.github.bchen290.drexelcoursebot.database.table.Subjects
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.SchemaUtils
 import org.jetbrains.exposed.sql.StdOutSqlLogger
@@ -22,8 +24,11 @@ object DatabaseHelper {
         transaction {
             addLogger(StdOutSqlLogger)
 
-            SchemaUtils.drop(DemoTable)
-            SchemaUtils.create(DemoTable)
+            SchemaUtils.drop(Subjects)
+            SchemaUtils.create(Subjects)
+
+            SchemaUtils.drop(Courses)
+            SchemaUtils.create(Courses)
         }
     }
 }
