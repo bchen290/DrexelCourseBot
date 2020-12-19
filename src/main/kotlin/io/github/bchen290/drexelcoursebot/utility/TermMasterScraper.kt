@@ -66,7 +66,8 @@ object TermMasterScraper {
                         val courseRows = subjectDocument.getElementsByClass("tableHeader").first().siblingElements().dropLast(1)
 
                         courseRows.forEach { rows ->
-                            val courseDocument = Jsoup.connect(BASE_URL + rows.child(crnIndex).selectFirst("a").attr("href")).timeout(0).get()
+                            val courseURL = BASE_URL + rows.child(crnIndex).selectFirst("a").attr("href")
+                            val courseDocument = Jsoup.connect(courseURL).timeout(0).get()
 
                             val tableHeaders = courseDocument.getElementsByClass("tableHeader")
 
@@ -95,6 +96,8 @@ object TermMasterScraper {
                                 credit = tableHeaders.first { it.text()!!.contentEquals("Credits") }.lastElementSibling().text()
                                 seatsAvailable = (maxEnroll - enroll).toString()
                                 sectionComment = tableHeaders.first { it.text()!!.contentEquals("Section Comments") }.lastElementSibling().text()
+
+                                url = courseURL
                             }
 
                             Thread.sleep(100)

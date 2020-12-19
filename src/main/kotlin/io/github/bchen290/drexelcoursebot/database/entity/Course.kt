@@ -26,4 +26,6 @@ class Course(id: EntityID<Int>) : IntEntity(id) {
     var credit by Courses.credit
     var seatsAvailable by Courses.seatsAvailable
     var sectionComment by Courses.sectionComment
+
+    var url by Courses.url
 }

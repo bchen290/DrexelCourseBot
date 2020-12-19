@@ -21,4 +21,6 @@ object Courses : IntIdTable() {
     val credit = text("credit")
     val seatsAvailable = text("seatsAvailable")
     val sectionComment = text("sectionComment")
+
+    val url = text("url")
 }
