@@ -20,7 +20,10 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter")
     implementation("org.jetbrains.kotlin:kotlin-reflect")
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
+
     implementation("com.discord4j:discord4j-core:3.1.3")
+    implementation("org.jsoup:jsoup:1.13.1")
+
     implementation("org.jetbrains.exposed:exposed-core:0.28.1")
     implementation("org.jetbrains.exposed:exposed-dao:0.28.1")
     implementation("org.jetbrains.exposed:exposed-jdbc:0.28.1")

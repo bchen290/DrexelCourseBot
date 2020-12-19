@@ -3,7 +3,7 @@ package io.github.bchen290.drexelcoursebot.database.table
 import org.jetbrains.exposed.dao.id.IntIdTable
 
 object Courses : IntIdTable() {
-    val subject = reference("subjectCode", Subjects)
+    val subject = reference("subject", Subjects)
 
     val title = text("title")
     val descriptions = text("descriptions")

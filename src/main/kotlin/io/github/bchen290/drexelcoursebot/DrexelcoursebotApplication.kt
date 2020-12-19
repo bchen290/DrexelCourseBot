@@ -3,21 +3,25 @@ package io.github.bchen290.drexelcoursebot
 import discord4j.core.DiscordClientBuilder
 import discord4j.core.event.domain.lifecycle.ReadyEvent
 import io.github.bchen290.drexelcoursebot.database.DatabaseHelper
+import io.github.bchen290.drexelcoursebot.utility.TermMasterScraper
 import org.springframework.boot.CommandLineRunner
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
 import org.springframework.context.ApplicationContext
 import org.springframework.context.annotation.Bean
 import java.io.File
+import java.io.FileInputStream
+import java.util.*
 
 @SpringBootApplication
 class DrexelcoursebotApplication {
     @Bean
     fun commandLineRunner(ctx: ApplicationContext) : CommandLineRunner {
         return CommandLineRunner {
-            val token = File("bot_token.txt").readText(Charsets.UTF_8)
+            val prop = Properties()
+            prop.load(FileInputStream("env.properties"))
 
-            val client = DiscordClientBuilder.create(token)
+            val client = DiscordClientBuilder.create(prop.getProperty("botToken"))
                     .build()
                     .login()
                     .block()!!
@@ -28,7 +32,11 @@ class DrexelcoursebotApplication {
                     }
 
             CourseCog(client)
-            DatabaseHelper
+            DatabaseHelper.setupDB(prop)
+
+            if (prop.getProperty("shouldScrape")?.toBoolean() == true) {
+                TermMasterScraper
+            }
 
             client.onDisconnect().block()
         }
