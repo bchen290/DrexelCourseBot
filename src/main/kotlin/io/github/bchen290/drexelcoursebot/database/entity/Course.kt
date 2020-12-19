@@ -11,6 +11,7 @@ class Course(id: EntityID<Int>) : IntEntity(id) {
     var subject by Subject referencedOn Courses.subject
 
     var title by Courses.title
+    var number by Courses.number
     var description by Courses.descriptions
     var prerequisite by Courses.prerequisites
     var restrictions by Courses.restrictions

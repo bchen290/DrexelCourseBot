@@ -6,6 +6,7 @@ object Courses : IntIdTable() {
     val subject = reference("subject", Subjects)
 
     val title = text("title")
+    val number = text("number")
     val descriptions = text("descriptions")
     val prerequisites = text("prerequisites")
     val restrictions = text("restrictions")

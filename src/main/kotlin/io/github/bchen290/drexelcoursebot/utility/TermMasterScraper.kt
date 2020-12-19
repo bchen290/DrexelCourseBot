@@ -80,6 +80,7 @@ object TermMasterScraper {
                                 subject = currentSubject
 
                                 title = courseTitle
+                                number = tableHeaders.first { it.text()!!.contentEquals("Course Number") }.lastElementSibling().text()
                                 description = courseDocument.getElementsByClass("courseDesc").first().text()
                                 prerequisite = courseDocument.getElementsByClass("subpoint").first { it.text().contains("Pre-Requisites:") }.select("span").joinToString(separator = " ") { it.text() }
                                 restrictions = courseDocument.select(".subpoint1,.subpoint2").filter { it.text().isNotEmpty() }.joinToString(separator = " ") { it.text() + "\n" }
