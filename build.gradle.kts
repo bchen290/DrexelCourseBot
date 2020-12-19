@@ -23,6 +23,7 @@ dependencies {
 
     implementation("com.discord4j:discord4j-core:3.1.3")
     implementation("org.jsoup:jsoup:1.13.1")
+    implementation("de.vandermeer:asciitable:0.3.2")
 
     implementation("org.jetbrains.exposed:exposed-core:0.28.1")
     implementation("org.jetbrains.exposed:exposed-dao:0.28.1")

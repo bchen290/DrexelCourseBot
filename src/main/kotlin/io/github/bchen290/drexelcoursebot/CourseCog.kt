@@ -1,18 +1,15 @@
 package io.github.bchen290.drexelcoursebot
 
-import discord4j.core.GatewayDiscordClient
-import discord4j.core.event.domain.message.MessageCreateEvent
+import io.github.bchen290.drexelcoursebot.utility.commands.Command
 import reactor.core.publisher.Mono
 
-class CourseCog(client: GatewayDiscordClient) {
+class CourseCog(commands: MutableMap<String, Command>) {
     init {
-        client.on(MessageCreateEvent::class.java)
-            .map(MessageCreateEvent::getMessage)
-            .filter { it.author.map { user -> !user.isBot }.orElse(false) }
-            .filter { it.content.equals("!ping", true) }
-            .flatMap { it.channel }
-            .flatMap { it.createMessage("Pong!").onErrorResume { Mono.empty() } }
-            .subscribe()
-
+        commands["ping"] = Command { event ->
+            Mono.justOrEmpty(event.message.content)
+                .map { content -> content.split(" ") }
+                .doOnNext { command -> event.message.channel.flatMap { channel -> channel.createMessage(command.joinToString { it }) }.subscribe() }
+                .then()
+        }
     }
 }
