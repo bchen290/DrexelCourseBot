@@ -43,6 +43,7 @@ class DrexelcoursebotApplication {
 
             if (prop.getProperty("shouldScrape")?.toBoolean() == true) {
                 TermMasterScraper
+                prop.setProperty("shouldScrape", "false")
             }
 
             client.eventDispatcher.on(MessageCreateEvent::class.java)
