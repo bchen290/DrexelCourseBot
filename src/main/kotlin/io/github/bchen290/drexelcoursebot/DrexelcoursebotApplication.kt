@@ -13,8 +13,8 @@ import org.springframework.context.ApplicationContext
 import org.springframework.context.annotation.Bean
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
-import java.io.File
 import java.io.FileInputStream
+import java.io.FileOutputStream
 import java.util.*
 
 @SpringBootApplication
@@ -42,8 +42,9 @@ class DrexelcoursebotApplication {
             DatabaseHelper.setupDB(prop)
 
             if (prop.getProperty("shouldScrape")?.toBoolean() == true) {
-                TermMasterScraper
+                TermMasterScraper()
                 prop.setProperty("shouldScrape", "false")
+                prop.store(FileOutputStream("env.properties"), null)
             }
 
             client.eventDispatcher.on(MessageCreateEvent::class.java)
