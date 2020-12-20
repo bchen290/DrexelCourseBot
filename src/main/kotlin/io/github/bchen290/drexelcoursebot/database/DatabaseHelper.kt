@@ -12,7 +12,8 @@ object DatabaseHelper {
         val dbUser = prop.getProperty("dbUser")
         val dbPassword = prop.getProperty("dbPassword")
 
-        Database.connect(dbURL, driver = "org.postgresql.Driver", user = dbUser, password = dbPassword)
+        val db = Database.connect(dbURL, driver = "org.postgresql.Driver", user = dbUser, password = dbPassword)
+        db.useNestedTransactions = true
 
         transaction {
             addLogger(StdOutSqlLogger)
