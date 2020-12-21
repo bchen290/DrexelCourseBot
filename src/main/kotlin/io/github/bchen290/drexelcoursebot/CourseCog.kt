@@ -13,9 +13,6 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import reactor.core.publisher.Mono
 
 class CourseCog(commands: MutableMap<String, Command>) {
-    val userStateMap = mutableMapOf<String, QuestionStates>()
-    val userResponseMap = mutableMapOf<String, MutableList<String>>()
-
     init {
         commands["ping"] = Command { event ->
             Mono.justOrEmpty(event.message)
@@ -63,19 +60,19 @@ class CourseCog(commands: MutableMap<String, Command>) {
 
         commands["courses"] = Command { event ->
             Mono.justOrEmpty(event.message)
-                .doOnNext { message ->
+                .map { message ->
                     val author = message.author.get()
+                    val messageToSend = ""
 
-                    userStateMap[author.tag] = QuestionStates.QUARTER
+                    transaction {
+                        Course.all()
+                    }
 
                     author.privateChannel.flatMap { channel ->
                         channel.createMessage("Select a quarter:\n${QuarterState.values().withIndex().joinToString(separator = "\n") { "${it.index + 1}: ${it.value.quarter}" }}")
                     }.subscribe()
-                }.then()
+                }
+                .then()
         }
-    }
-
-    fun createEmbedFromCourse(channel: Mono<PrivateChannel>, course: Course) {
-
     }
 }
