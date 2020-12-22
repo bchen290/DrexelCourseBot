@@ -51,7 +51,7 @@ class DrexelcoursebotApplication {
                         print("Logged in as %s#%s\n".format(it.self.username, it.self.discriminator))
                     }
 
-            val courseCog = CourseCog(commands)
+            CourseCog(commands)
             DatabaseHelper.setupDB(prop)
 
             if (prop.getProperty("shouldScrape")?.toBoolean() == true) {
@@ -65,7 +65,7 @@ class DrexelcoursebotApplication {
                     .filter { message -> message.author.map { user -> !user.isBot }.orElse(false) }
                     .flatMap { message ->
                         Flux.fromIterable(commands.entries)
-                            .filter { entry -> message.content.startsWith(prefix + entry.key) }
+                            .filter { entry -> message.content.split(" ")[0].contentEquals(prefix + entry.key) }
                             .flatMap { entry -> entry.value.execute(event) }
                             .next()
                     }
