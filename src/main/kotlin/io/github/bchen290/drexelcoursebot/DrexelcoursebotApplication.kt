@@ -4,19 +4,8 @@ import discord4j.core.DiscordClientBuilder
 import discord4j.core.event.domain.lifecycle.ReadyEvent
 import discord4j.core.event.domain.message.MessageCreateEvent
 import io.github.bchen290.drexelcoursebot.database.DatabaseHelper
-import io.github.bchen290.drexelcoursebot.database.entity.Course
-import io.github.bchen290.drexelcoursebot.database.table.Courses
-import io.github.bchen290.drexelcoursebot.database.table.Quarters
-import io.github.bchen290.drexelcoursebot.database.table.Schools
-import io.github.bchen290.drexelcoursebot.database.table.Subjects
-import io.github.bchen290.drexelcoursebot.utility.states.QuestionStates
 import io.github.bchen290.drexelcoursebot.utility.TermMasterScraper
 import io.github.bchen290.drexelcoursebot.utility.commands.Command
-import io.github.bchen290.drexelcoursebot.utility.states.FilterOptions
-import io.github.bchen290.drexelcoursebot.utility.states.QuarterState
-import org.jetbrains.exposed.sql.and
-import org.jetbrains.exposed.sql.select
-import org.jetbrains.exposed.sql.transactions.transaction
 import org.springframework.boot.CommandLineRunner
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
@@ -26,8 +15,6 @@ import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.io.FileInputStream
 import java.io.FileOutputStream
-import java.lang.Exception
-import java.lang.NumberFormatException
 import java.util.*
 
 @SpringBootApplication

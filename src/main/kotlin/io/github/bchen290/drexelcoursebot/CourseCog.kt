@@ -5,6 +5,7 @@ import io.github.bchen290.drexelcoursebot.database.entity.Course
 import io.github.bchen290.drexelcoursebot.database.table.Courses
 import io.github.bchen290.drexelcoursebot.database.table.Subjects
 import io.github.bchen290.drexelcoursebot.utility.commands.Command
+import io.github.bchen290.drexelcoursebot.utility.states.CoursesState
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -24,8 +25,15 @@ class CourseCog(commands: MutableMap<String, Command>) {
 
         commands["courses"] = Command { event ->
             val content = event.message.content.split(" ")
-            val (messageToSend, fileByteArray) = when(content.size) {
-                1 -> {
+
+            val coursesState = try {
+                CoursesState.values()[content.size - 1]
+            } catch (e: IndexOutOfBoundsException) {
+                CoursesState.INVALID
+            }
+
+            val (messageToSend, fileByteArray) = when(coursesState) {
+                CoursesState.ALL_COURSES -> {
                     transaction {
                         val courses = Course.all().map { course ->
                             listOf(course.title, course.subject.subjectCode, course.number, course.description, course.prerequisite, course.restrictions, course.corequisites, course.instructorType, course.section, course.crn, course.time, course.instructor, course.credit, course.seatsAvailable, course.sectionComment).map {
@@ -36,7 +44,7 @@ class CourseCog(commands: MutableMap<String, Command>) {
                         Pair("Generating CSV...", "Title, Subject Code, Course Number, Description, Prerequisite, Restriction, Corequisites, Instructor type, Section Number, CRN, Time, Instructor, Credit, Seats Available, Section Comments\n$courses".toByteArray(Charsets.UTF_8))
                     }
                 }
-                else -> {
+                CoursesState.INVALID -> {
                     Pair("Invalid usage of command", null)
                 }
             }
