@@ -24,7 +24,7 @@ class CourseCog(commands: MutableMap<String, Command>) {
 
         commands["courses"] = Command { event ->
             val content = event.message.content.split(" ")
-            val messageToSend = when(content.size) {
+            val (messageToSend, fileByteArray) = when(content.size) {
                 1 -> {
                     transaction {
                         val courses = Course.all().map { course ->
@@ -33,17 +33,21 @@ class CourseCog(commands: MutableMap<String, Command>) {
                             }
                         }.joinToString("\n") { courseDescription -> courseDescription.joinToString(",") { it } }
 
-                        "Title, Subject Code, Course Number, Description, Prerequisite, Restriction, Corequisites, Instructor type, Section Number, CRN, Time, Instructor, Credit, Seats Available, Section Comments\n$courses"
+                        Pair("Generating CSV...", "Title, Subject Code, Course Number, Description, Prerequisite, Restriction, Corequisites, Instructor type, Section Number, CRN, Time, Instructor, Credit, Seats Available, Section Comments\n$courses".toByteArray(Charsets.UTF_8))
                     }
                 }
                 else -> {
-                    "Invalid usage of command"
+                    Pair("Invalid usage of command", null)
                 }
             }
 
             event.message.channel.flatMap { channel ->
-                channel.createMessage {
-                    it.addFile("courses.csv", ByteArrayInputStream(messageToSend.toByteArray(Charsets.UTF_8)))
+                if (fileByteArray == null) {
+                    channel.createMessage(messageToSend)
+                } else {
+                    Mono.`when`(channel.createMessage(messageToSend), channel.createMessage {
+                        it.addFile("courses.csv", ByteArrayInputStream(fileByteArray))
+                    })
                 }
             }.then()
         }
