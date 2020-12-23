@@ -3,6 +3,7 @@ package io.github.bchen290.drexelcoursebot
 import io.github.bchen290.drexelcoursebot.database.entity.Course
 import io.github.bchen290.drexelcoursebot.database.table.Courses
 import io.github.bchen290.drexelcoursebot.database.table.Subjects
+import io.github.bchen290.drexelcoursebot.utility.Emojis
 import io.github.bchen290.drexelcoursebot.utility.TableCreator
 import io.github.bchen290.drexelcoursebot.utility.commands.Command
 import io.github.bchen290.drexelcoursebot.utility.states.CoursesState
@@ -113,6 +114,13 @@ class CourseCog(commands: MutableMap<String, Command>) {
                             it.setContent(fileMessage)
                         }
                         it.addFile("courses.csv", ByteArrayInputStream(fileByteArray))
+                    }.flatMap { message ->
+                        Mono.`when`(
+                            message.addReaction(Emojis.ARROW_DOUBLE_UP.reactionEmoji),
+                            message.addReaction(Emojis.ARROW_UP.reactionEmoji),
+                            message.addReaction(Emojis.ARROW_DOWN.reactionEmoji),
+                            message.addReaction(Emojis.ARROW_DOUBLE_DOWN.reactionEmoji)
+                        )
                     })
                 }
             }.then()
