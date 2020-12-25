@@ -10,5 +10,7 @@ class ChannelMessage(id: EntityID<Int>) : IntEntity(id) {
 
     var channelID by ChannelMessages.channelID
     var messageID by ChannelMessages.messageID
+    var content by ChannelMessages.content
     var offset by ChannelMessages.offset
+    var maxOffset by ChannelMessages.maxOffset
 }

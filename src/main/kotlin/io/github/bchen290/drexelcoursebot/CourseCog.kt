@@ -1,10 +1,16 @@
 package io.github.bchen290.drexelcoursebot
 
+import discord4j.common.util.Snowflake
+import discord4j.core.event.domain.message.MessageEvent
+import discord4j.core.event.domain.message.ReactionAddEvent
+import io.github.bchen290.drexelcoursebot.database.entity.ChannelMessage
 import io.github.bchen290.drexelcoursebot.database.entity.Course
+import io.github.bchen290.drexelcoursebot.database.table.ChannelMessages
 import io.github.bchen290.drexelcoursebot.database.table.Courses
 import io.github.bchen290.drexelcoursebot.database.table.Subjects
 import io.github.bchen290.drexelcoursebot.utility.Emojis
 import io.github.bchen290.drexelcoursebot.utility.TableCreator
+import io.github.bchen290.drexelcoursebot.utility.Utilities
 import io.github.bchen290.drexelcoursebot.utility.commands.Command
 import io.github.bchen290.drexelcoursebot.utility.states.CoursesState
 import io.github.bchen290.drexelcoursebot.utility.states.FilterOptions
@@ -16,56 +22,24 @@ import reactor.core.publisher.Mono
 import java.io.ByteArrayInputStream
 import kotlin.IndexOutOfBoundsException
 
-class CourseCog(commands: MutableMap<String, Command>) {
+class CourseCog(messageCommands: MutableMap<String, Command>) {
+    private val rowsPerPage = 10
+
     init {
-        commands["ping"] = Command { event ->
+        messageCommands["ping"] = Command { event ->
             event.message.channel.flatMap {
                 it.createMessage("Pong!")
             }.then()
         }
 
-        commands["courses"] = Command { event ->
-            var content = event.message.content.split(" ")
-            content = content.drop(1)
+        messageCommands["courses"] = Command { event ->
+            var messageContent = event.message.content.split(" ")
+            messageContent = messageContent.drop(1)
 
             val filterMap = mutableMapOf<FilterOptions, String>()
 
-            val coursesState = if (content.isNotEmpty()) {
-                try {
-                    while (content.isNotEmpty()) {
-                        val filterOptions = when(content[0].toUpperCase()) {
-                            "SUBJECT", "SUB" -> FilterOptions.SUBJECT
-                            "CRN" -> FilterOptions.CRN
-                            "PROFESSOR", "PROF" -> FilterOptions.PROFESSOR
-                            "CREDIT" , "CRED" -> FilterOptions.CREDITS
-                            "PREREQ", "PRE-REQ", "PREREQUISITE", "PRE-REQUISITE" -> FilterOptions.PREREQUISITES
-                            else -> null
-                        }
-
-                        when (filterOptions) {
-                            FilterOptions.SUBJECT,
-                            FilterOptions.CRN,
-                            FilterOptions.PROFESSOR,
-                            FilterOptions.CREDITS -> {
-                                filterMap[filterOptions] = content[1]
-                                content = content.drop(2)
-                            }
-                            FilterOptions.PREREQUISITES -> {
-                                filterMap[filterOptions] = "true"
-                                content = content.drop(1)
-                            }
-                            null -> {
-                                throw IllegalArgumentException()
-                            }
-                        }
-                    }
-
-                    CoursesState.FILTER
-                } catch (_: IllegalArgumentException) {
-                    CoursesState.ILLEGAL_ARGUMENT
-                } catch (_: IndexOutOfBoundsException) {
-                    CoursesState.NOT_ENOUGH_ARGUMENT
-                }
+            val coursesState = if (messageContent.isNotEmpty()) {
+                convertMessageToFilterMap(messageContent, filterMap)
             } else {
                 CoursesState.ALL_COURSES
             }
@@ -73,31 +47,21 @@ class CourseCog(commands: MutableMap<String, Command>) {
             val (messageToSend, fileMessage, fileByteArray) = when(coursesState) {
                 CoursesState.ALL_COURSES -> {
                     transaction {
-                        val courses = courseIterableToStringCSV(Course.all())
-                        Triple("Generating CSV...", null, appendHeaderCSV(courses).toByteArray(Charsets.UTF_8))
+                        val courses = Utilities.courseIterableToStringCSV(Course.all().toList())
+                        Triple("Generating CSV...", null, Utilities.appendHeaderCSV(courses).toByteArray(Charsets.UTF_8))
                     }
                 }
                 CoursesState.FILTER -> {
                     transaction {
-                        var query: Op<Boolean>? = null
+                        val query: Op<Boolean>? = filterMapToQuery(filterMap)
 
-                        filterMap.forEach { (filterOption, userArgument) ->
-                            val queryOption = when (filterOption) {
-                                FilterOptions.SUBJECT -> Subjects.code eq userArgument.toUpperCase()
-                                FilterOptions.CRN -> Courses.crn like "%$userArgument%"
-                                FilterOptions.PROFESSOR -> Courses.instructor like "%$userArgument%"
-                                FilterOptions.CREDITS -> Courses.credit like "%$userArgument%"
-                                FilterOptions.PREREQUISITES -> Courses.prerequisites eq "N/A"
-                            }
+                        val coursesList = query?.let { Course.wrapRows(Courses.innerJoin(Subjects).select { it }).toList() }
+                        val courses = coursesList?.let { Utilities.courseIterableToStringCSV(it) }
 
-                            query = query?.and(queryOption) ?: queryOption
-                        }
+                        val coursesLimit = query?.let { Utilities.courseIterableToStringTable(Course.wrapRows(Courses.innerJoin(Subjects).select { it }.limit(rowsPerPage, 0))) }
 
-                        val courses = query?.let { courseIterableToStringCSV(Course.wrapRows(Courses.innerJoin(Subjects).select { it })) }
-                        val coursesLimit = query?.let { courseIterableToStringTable(Course.wrapRows(Courses.innerJoin(Subjects).select { it }.limit(10, 0))) }
-
-                        val table = TableCreator.csvToTable(appendHeaderTable(coursesLimit ?: ""))
-                        Triple("Generating CSV...", table, appendHeaderCSV(courses ?: "An error has occurred").toByteArray())
+                        val table = TableCreator.csvToTable(Utilities.appendHeaderTable(coursesLimit ?: ""))
+                        Triple("Generating CSV...", "${coursesList?.size ?: 0}|$table", Utilities.appendHeaderCSV(courses ?: "An error has occurred").toByteArray())
                     }
                 }
                 CoursesState.ILLEGAL_ARGUMENT, CoursesState.NOT_ENOUGH_ARGUMENT -> {
@@ -111,22 +75,41 @@ class CourseCog(commands: MutableMap<String, Command>) {
                 } else {
                     Mono.`when`(channel.createMessage(messageToSend), channel.createMessage {
                         if (fileMessage != null) {
-                            it.setContent(fileMessage)
+                            it.setContent(fileMessage.split("|")[1])
                         }
                         it.addFile("courses.csv", ByteArrayInputStream(fileByteArray))
                     }.flatMap { message ->
-                        Mono.`when`(
-                            message.addReaction(Emojis.ARROW_DOUBLE_UP.reactionEmoji),
-                            message.addReaction(Emojis.ARROW_UP.reactionEmoji),
-                            message.addReaction(Emojis.ARROW_DOWN.reactionEmoji),
-                            message.addReaction(Emojis.ARROW_DOUBLE_DOWN.reactionEmoji)
-                        )
+                        if (fileMessage != null) {
+                            transaction {
+                                val messageChannelID = message.channelId.asString()
+                                val messageMessageID = message.id.asString()
+
+                                val maxPages = (fileMessage.split("|")[0].toInt() / rowsPerPage) + 1
+
+                                ChannelMessages.insertIgnore {
+                                    it[channelID] = messageChannelID
+                                    it[messageID] = messageMessageID
+                                    it[content] = event.message.content
+                                    it[offset] = 0
+                                    it[maxOffset] = maxPages
+                                }
+                            }
+
+                            Mono.`when`(
+                                message.addReaction(Emojis.ARROW_DOUBLE_UP.reactionEmoji),
+                                message.addReaction(Emojis.ARROW_UP.reactionEmoji),
+                                message.addReaction(Emojis.ARROW_DOWN.reactionEmoji),
+                                message.addReaction(Emojis.ARROW_DOUBLE_DOWN.reactionEmoji)
+                            )
+                        } else {
+                            Mono.empty()
+                        }
                     })
                 }
             }.then()
         }
 
-        commands["course"] = Command { event ->
+        messageCommands["course"] = Command { event ->
             val content = event.message.content
 
             // Add space in between subject and course number
@@ -165,27 +148,117 @@ class CourseCog(commands: MutableMap<String, Command>) {
         }
     }
 
-    private fun courseIterableToStringCSV(courses: SizedIterable<Course>): String {
-        return courses.map { course ->
-            listOf(course.title, course.subject.subjectCode, course.number, course.description, course.prerequisite, course.restrictions, course.corequisites, course.instructorType, course.section, course.crn, course.time, course.instructor, course.credit, course.seatsAvailable, course.sectionComment).map {
-                "\"${it.replace("\n", " ")}\""
+    fun onReactionAdded(event: ReactionAddEvent) {
+        val channelID = event.channelId.asString()
+        val messageID = event.messageId.asString()
+
+        val emoji = try {
+            Emojis.values().first { it.reactionEmoji == event.emoji.asUnicodeEmoji().get() }
+        } catch (_: NoSuchElementException) {
+            return
+        }
+
+        val channelMessage = try {
+            transaction {
+                val query = ChannelMessages.select {
+                    (ChannelMessages.channelID eq channelID).and(ChannelMessages.messageID eq messageID)
+                }
+
+                ChannelMessage.wrapRows(query).toList().first()
             }
-        }.joinToString("\n") { courseDescription -> courseDescription.joinToString(",") { it } }
-    }
+        } catch (_: NoSuchElementException) {
+            return
+        }
 
-    private fun appendHeaderCSV(coursesString: String): String {
-        return "Title, Subject Code, Course Number, Description, Prerequisite, Restriction, Corequisites, Instructor type, Section Number, CRN, Time, Instructor, Credit, Seats Available, Section Comments\n$coursesString"
-    }
+        var messageContent = channelMessage.content.split(" ")
+        messageContent = messageContent.drop(1)
 
-    private fun courseIterableToStringTable(courses: SizedIterable<Course>): String {
-        return courses.map { course ->
-            listOf(course.subject.subjectCode + course.number, course.crn, course.title, course.time, course.instructor, course.seatsAvailable).map {
-                "\"${it.replace("\n", " ")}\""
+        val filterMap = mutableMapOf<FilterOptions, String>()
+        convertMessageToFilterMap(messageContent, filterMap)
+
+        val query: Op<Boolean>? = filterMapToQuery(filterMap)
+
+        val newOffset = when(emoji) {
+            Emojis.ARROW_DOUBLE_UP -> 0
+            Emojis.ARROW_UP -> if (channelMessage.offset - 1 < 0) 0 else channelMessage.offset - 1
+            Emojis.ARROW_DOWN -> if (channelMessage.offset + 1 > channelMessage.maxOffset) channelMessage.maxOffset else channelMessage.offset + 1
+            Emojis.ARROW_DOUBLE_DOWN -> channelMessage.maxOffset
+        }
+
+        val coursesLimit = transaction {
+            ChannelMessages.update({ (ChannelMessages.channelID eq channelID).and(ChannelMessages.messageID eq messageID) }) {
+                it[offset] = newOffset
             }
-        }.joinToString("\n") { courseDescription -> courseDescription.joinToString(",") { it } }
+
+            query?.let { Utilities.courseIterableToStringTable(Course.wrapRows(Courses.innerJoin(Subjects).select { it }.limit(rowsPerPage, newOffset.toLong()))) }
+        }
+
+        val table = TableCreator.csvToTable(Utilities.appendHeaderTable(coursesLimit ?: ""))
+
+        event.channel.flatMap {
+            event.message
+        }.flatMap { message ->
+            message.edit { messageEditSpec ->
+                messageEditSpec.setContent(table)
+            }
+        }.subscribe()
     }
 
-    private fun appendHeaderTable(coursesString: String): String {
-        return "Course Number,CRN,Title,Days/Time,Instructor,Seats Available\n$coursesString"
+    private fun convertMessageToFilterMap(messageContent: List<String>, filterMap: MutableMap<FilterOptions, String>): CoursesState {
+        var content = messageContent
+
+        try {
+            while (content.isNotEmpty()) {
+                val filterOptions = when(content[0].toUpperCase()) {
+                    "SUBJECT", "SUB" -> FilterOptions.SUBJECT
+                    "CRN" -> FilterOptions.CRN
+                    "PROFESSOR", "PROF" -> FilterOptions.PROFESSOR
+                    "CREDIT" , "CRED" -> FilterOptions.CREDITS
+                    "PREREQ", "PRE-REQ", "PREREQUISITE", "PRE-REQUISITE" -> FilterOptions.PREREQUISITES
+                    else -> null
+                }
+
+                when (filterOptions) {
+                    FilterOptions.SUBJECT,
+                    FilterOptions.CRN,
+                    FilterOptions.PROFESSOR,
+                    FilterOptions.CREDITS -> {
+                        filterMap[filterOptions] = content[1]
+                        content = content.drop(2)
+                    }
+                    FilterOptions.PREREQUISITES -> {
+                        filterMap[filterOptions] = "true"
+                        content = content.drop(1)
+                    }
+                    null -> {
+                        throw IllegalArgumentException()
+                    }
+                }
+            }
+
+            return CoursesState.FILTER
+        } catch (_: IllegalArgumentException) {
+            return CoursesState.ILLEGAL_ARGUMENT
+        } catch (_: IndexOutOfBoundsException) {
+            return CoursesState.NOT_ENOUGH_ARGUMENT
+        }
+    }
+
+    private fun filterMapToQuery(filterMap: MutableMap<FilterOptions, String>): Op<Boolean>? {
+        var query: Op<Boolean>? = null
+
+        filterMap.forEach { (filterOption, userArgument) ->
+            val queryOption = when (filterOption) {
+                FilterOptions.SUBJECT -> Subjects.code eq userArgument.toUpperCase()
+                FilterOptions.CRN -> Courses.crn like "%$userArgument%"
+                FilterOptions.PROFESSOR -> Courses.instructor.lowerCase() like "%$userArgument%".toLowerCase()
+                FilterOptions.CREDITS -> Courses.credit like "%$userArgument%"
+                FilterOptions.PREREQUISITES -> Courses.prerequisites eq "N/A"
+            }
+
+            query = query?.and(queryOption) ?: queryOption
+        }
+
+        return query
     }
 }
