@@ -30,7 +30,7 @@ class DrexelcoursebotApplication {
     fun commandLineRunner(ctx: ApplicationContext) : CommandLineRunner {
         return CommandLineRunner {
             val prop = Properties()
-            prop.load(FileInputStream("env.properties"))
+            prop.load(FileInputStream(".env"))
             val prefix = prop.getProperty("prefix")
 
             val messageCommands = mutableMapOf<String, Command>()
@@ -62,7 +62,7 @@ class DrexelcoursebotApplication {
                 prop.setProperty("recreateDatabase", "false")
             }
 
-            prop.store(FileOutputStream("env.properties"), null)
+            prop.store(FileOutputStream(".env"), null)
 
             client.eventDispatcher.on(MessageCreateEvent::class.java)
                 .flatMap { event -> Mono.just(event.message)
