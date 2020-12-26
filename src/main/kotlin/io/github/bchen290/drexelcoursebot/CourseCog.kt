@@ -34,6 +34,8 @@ class CourseCog(messageCommands: MutableMap<String, Command>) {
             event.message.channel.flatMap {
                 it.createMessage("""
                     ```
+                    Boop help
+                    ------------------------------------------------------------------------------------------------------------
                     help - show this message
                     course - show course detail for a single course (ex. !course CS270 or !course CS 270)
                     courses - show all courses which can be filtered with the following filters (ex. !courses sub cs prof Char)
