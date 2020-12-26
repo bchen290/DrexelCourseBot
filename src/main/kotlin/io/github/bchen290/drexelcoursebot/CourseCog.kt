@@ -190,7 +190,7 @@ class CourseCog(messageCommands: MutableMap<String, Command>) {
                 it[offset] = newOffset
             }
 
-            query?.let { Utilities.courseIterableToStringTable(Course.wrapRows(Courses.innerJoin(Subjects).select { it }.limit(rowsPerPage, newOffset.toLong()))) }
+            query?.let { Utilities.courseIterableToStringTable(Course.wrapRows(Courses.innerJoin(Subjects).select { it }.limit(rowsPerPage, (newOffset * rowsPerPage).toLong()))) }
         }
 
         val table = TableCreator.csvToTable(Utilities.appendHeaderTable(coursesLimit ?: ""))
