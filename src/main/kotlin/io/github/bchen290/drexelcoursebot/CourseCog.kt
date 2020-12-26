@@ -1,7 +1,5 @@
 package io.github.bchen290.drexelcoursebot
 
-import discord4j.common.util.Snowflake
-import discord4j.core.event.domain.message.MessageEvent
 import discord4j.core.event.domain.message.ReactionAddEvent
 import io.github.bchen290.drexelcoursebot.database.entity.ChannelMessage
 import io.github.bchen290.drexelcoursebot.database.entity.Course
@@ -29,6 +27,23 @@ class CourseCog(messageCommands: MutableMap<String, Command>) {
         messageCommands["ping"] = Command { event ->
             event.message.channel.flatMap {
                 it.createMessage("Pong!")
+            }.then()
+        }
+
+        messageCommands["help"] = Command { event ->
+            event.message.channel.flatMap {
+                it.createMessage("""
+                    ```
+                    help - show this message
+                    course - show course detail for a single course (ex. !course CS270 or !course CS 270)
+                    courses - show all courses which can be filtered with the following filters (ex. !courses sub cs prof Char)
+                        - sub, subject: filter by subject code
+                        - crn: filter by crn
+                        - prof, professor: filter by professor
+                        - cred, credit: filter by credits
+                        - prereq, pre-req, prerequisite, pre-requisite: filter by no prerequisites
+                    ```
+                """.trimIndent())
             }.then()
         }
 
