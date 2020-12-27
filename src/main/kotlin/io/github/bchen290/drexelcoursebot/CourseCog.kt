@@ -14,7 +14,9 @@ import io.github.bchen290.drexelcoursebot.utility.states.CoursesState
 import io.github.bchen290.drexelcoursebot.utility.states.FilterOptions
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.neq
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.like
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.notLike
 import org.jetbrains.exposed.sql.transactions.transaction
 import reactor.core.publisher.Mono
 import java.io.ByteArrayInputStream
@@ -226,7 +228,10 @@ class CourseCog(messageCommands: MutableMap<String, Command>) {
 
         try {
             while (content.isNotEmpty()) {
-                val filterOptions = when(content[0].toUpperCase()) {
+                val hasNot = content[0].toUpperCase().contentEquals("NOT")
+                val filterOptionIndex = if (hasNot) 1 else 0
+
+                val filterOptions = when(content[filterOptionIndex].toUpperCase()) {
                     "SUBJECT", "SUB" -> FilterOptions.SUBJECT
                     "CRN" -> FilterOptions.CRN
                     "PROFESSOR", "PROF" -> FilterOptions.PROFESSOR
@@ -240,8 +245,13 @@ class CourseCog(messageCommands: MutableMap<String, Command>) {
                     FilterOptions.CRN,
                     FilterOptions.PROFESSOR,
                     FilterOptions.CREDITS -> {
-                        filterMap[filterOptions] = content[1]
-                        content = content.drop(2)
+                        if (hasNot) {
+                            filterMap[filterOptions] = "NOT:${content[2]}"
+                            content = content.drop(3)
+                        } else {
+                            filterMap[filterOptions] = content[1]
+                            content = content.drop(2)
+                        }
                     }
                     FilterOptions.PREREQUISITES -> {
                         filterMap[filterOptions] = "true"
@@ -265,12 +275,23 @@ class CourseCog(messageCommands: MutableMap<String, Command>) {
         var query: Op<Boolean>? = null
 
         filterMap.forEach { (filterOption, userArgument) ->
-            val queryOption = when (filterOption) {
-                FilterOptions.SUBJECT -> Subjects.code eq userArgument.toUpperCase()
-                FilterOptions.CRN -> Courses.crn like "%$userArgument%"
-                FilterOptions.PROFESSOR -> Courses.instructor.lowerCase() like "%$userArgument%".toLowerCase()
-                FilterOptions.CREDITS -> Courses.credit like "%$userArgument%"
-                FilterOptions.PREREQUISITES -> Courses.prerequisites eq "N/A"
+            @Suppress("DuplicatedCode") val queryOption = if (userArgument.startsWith("NOT")) {
+                val newArgument = userArgument.substringAfter("NOT")
+                when (filterOption) {
+                    FilterOptions.SUBJECT -> Subjects.code neq newArgument.toUpperCase()
+                    FilterOptions.CRN -> Courses.crn notLike "%$newArgument%"
+                    FilterOptions.PROFESSOR -> Courses.instructor.lowerCase() notLike "%$newArgument%".toLowerCase()
+                    FilterOptions.CREDITS -> Courses.credit notLike "%$newArgument%"
+                    FilterOptions.PREREQUISITES -> Courses.prerequisites neq "N/A"
+                }
+            } else {
+                when (filterOption) {
+                    FilterOptions.SUBJECT -> Subjects.code eq userArgument.toUpperCase()
+                    FilterOptions.CRN -> Courses.crn like "%$userArgument%"
+                    FilterOptions.PROFESSOR -> Courses.instructor.lowerCase() like "%$userArgument%".toLowerCase()
+                    FilterOptions.CREDITS -> Courses.credit like "%$userArgument%"
+                    FilterOptions.PREREQUISITES -> Courses.prerequisites eq "N/A"
+                }
             }
 
             query = query?.and(queryOption) ?: queryOption
