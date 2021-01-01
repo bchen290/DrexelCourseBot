@@ -1,9 +1,19 @@
-postgres: &POSTGRES
-  image: postgres
-
-postgres-dev:
-  <<: *POSTGRES
-  ports:
-    - 5432:5432
-  volumes:
-    - ./db/dev/database.sql:/docker-entrypoint-initdb.d/1-dev-database.sql
+services:
+  db:
+    image: postgres
+    environment:
+      - POSTGRES_DB=drexel
+      - POSTGRES_USER={dbUser}
+      - POSTGRES_PASSWORD={dbPassword}
+    ports:
+      - "5432:5432"
+  app:
+    build: .
+    environment:
+      - POSTGRES_URL=jdbc:postgresql://db:5432/drexel
+    ports:
+      - "80:80"
+    links:
+      - db
+    depends_on:
+      - db

@@ -8,7 +8,7 @@ import java.util.*
 
 object DatabaseHelper {
     fun setupDB(prop: Properties) {
-        val dbURL = "jdbc:postgresql://localhost:5432/drexel"
+        val dbURL = System.getenv("POSTGRES_URL") ?: "jdbc:postgresql://localhost:5432/drexel"
         val dbUser = prop.getProperty("dbUser")
         val dbPassword = prop.getProperty("dbPassword")
 

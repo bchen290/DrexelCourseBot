@@ -37,4 +37,4 @@ out/
 .vscode/
 
 /bot_token.txt
-/env.properties
+/.env
