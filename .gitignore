@@ -38,3 +38,5 @@ out/
 
 /bot_token.txt
 /.env
+/data
+/docker-compose.yml
